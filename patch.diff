@@ -1,0 +1,52 @@
+--- app/src/main/java/com/example/presentation/reports/ReportsScreen.kt
++++ app/src/main/java/com/example/presentation/reports/ReportsScreen.kt
+@@ -19,2 +19,3 @@
+ import com.example.ui.theme.*
++import kotlinx.coroutines.launch
+ import java.text.SimpleDateFormat
+@@ -128,2 +129,35 @@
+             
++            item {
++                var aiSummary by remember { mutableStateOf<String?>(null) }
++                var isGenerating by remember { mutableStateOf(false) }
++                val coroutineScope = rememberCoroutineScope()
++                
++                Column(
++                    modifier = Modifier
++                        .fillMaxWidth()
++                        .background(BlueLight.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
++                        .border(1.dp, BlueAccent, RoundedCornerShape(16.dp))
++                        .padding(16.dp)
++                ) {
++                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
++                        Text("✨ AI Monthly Summary", fontWeight = FontWeight.Bold, color = BlueNavy)
++                        if (aiSummary == null && !isGenerating) {
++                            TextButton(onClick = {
++                                isGenerating = true
++                                coroutineScope.launch {
++                                    val result = com.example.data.repository.AiService.generateMonthlySummary()
++                                    isGenerating = false
++                                    aiSummary = result.getOrNull() ?: "Unable to generate summary right now."
++                                }
++                            }) {
++                                Text("Generate", color = BlueAccent)
++                            }
++                        }
++                    }
++                    
++                    if (isGenerating) {
++                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
++                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = BlueAccent)
++                            Spacer(modifier = Modifier.width(8.dp))
++                            Text("Analyzing your financial data...", fontSize = 12.sp, color = TextSecondary)
++                        }
++                    } else if (aiSummary != null) {
++                        Text(aiSummary!!, fontSize = 13.sp, color = TextPrimary, modifier = Modifier.padding(top = 8.dp))
++                    } else {
++                        Text("Get a smart overview of your business performance.", fontSize = 12.sp, color = TextSecondary)
++                    }
++                }
++                Spacer(modifier = Modifier.height(16.dp))
++            }
++
+             // 1. Overview

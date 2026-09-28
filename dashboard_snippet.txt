@@ -1,0 +1,236 @@
+    // Calculate Business Health Score (0-100)
+    var healthScore = 100
+    var healthReason = stringResource(R.string.str_business_is_healthy)
+    
+    if (myProducts.isEmpty() && mySales.isEmpty()) {
+        healthScore = 0
+        healthReason = stringResource(R.string.str_add_products_health)
+    } else {
+        var reasons = mutableListOf<String>()
+        // Outstanding penalty
+        if (totalOutstanding > 50000) {
+            healthScore -= 15
+            reasons.add(stringResource(R.string.str_high_outstanding))
+        } else if (totalOutstanding > 10000) {
+            healthScore -= 5
+        }
+        
+        // Low stock penalty
+        if (lowStockCount > 0) {
+            val penalty = minOf(20, lowStockCount * 2)
+            healthScore -= penalty
+            reasons.add(stringResource(R.string.str_items_low_stock, lowStockCount))
+        }
+        
+        // Profitability (overall)
+        val allTimeCogs = mySales.sumOf { sale -> sale.items.sumOf { it.quantity * it.purchasePriceAtSale } }
+        val allTimeRevenue = mySales.sumOf { it.grandTotal }
+        val allTimeExpenses = myExpenses.sumOf { it.amount }
+        val allTimeProfit = allTimeRevenue - allTimeCogs - allTimeExpenses
+        
+        if (mySales.isNotEmpty() && allTimeProfit < 0) {
+            healthScore -= 20
+            reasons.add(stringResource(R.string.str_operating_loss))
+        }
+        
+        if (reasons.isNotEmpty()) {
+            healthReason = stringResource(R.string.str_need_attention, reasons.joinToString(", "))
+        }
+    }
+    
+    val healthCategory = when {
+        healthScore >= 80 -> stringResource(R.string.str_health_excellent)
+        healthScore >= 60 -> stringResource(R.string.str_health_good)
+        healthScore >= 40 -> stringResource(R.string.str_health_needs_attention)
+        else -> stringResource(R.string.str_health_critical)
+    }
+    val healthColor = when {
+        healthScore >= 80 -> AccentGreen
+        healthScore >= 60 -> BlueAccent
+        healthScore >= 40 -> AccentOrange
+        else -> AccentRed
+    }
+    
+    var showProfileSheet by remember { mutableStateOf(false) }
+    var currentTab by remember { mutableStateOf("Home") }
+    var khataSelectedTab by remember { mutableStateOf(0) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize().background(BlueBackground),
+        containerColor = BlueBackground,
+        floatingActionButton = {
+            if (currentTab == "Home" || currentTab == "Sales") {
+                FloatingActionButton(
+                    onClick = { onNavigateToSubRoute("new_sale") },
+                    containerColor = BlueLight,
+                    contentColor = BlueNavy,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+                }
+            } else if (currentTab == "Inventory") {
+                FloatingActionButton(
+                    onClick = { onNavigateToSubRoute("product_form/new") },
+                    containerColor = BlueLight,
+                    contentColor = BlueNavy,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.str_add_products), modifier = Modifier.size(32.dp))
+                }
+            
+            } else if (currentTab == "Expenses") {
+                FloatingActionButton(
+                    onClick = { onNavigateToSubRoute("new_expense") },
+                    containerColor = BlueLight,
+                    contentColor = BlueNavy,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.str_add_expense_btn), modifier = Modifier.size(32.dp))
+                }
+
+        } else if (currentTab == "Khata") {
+                FloatingActionButton(
+                    onClick = { 
+                        if (khataSelectedTab == 0) {
+                            onNavigateToSubRoute("customer_form/new")
+                        } else {
+                            onNavigateToSubRoute("supplier_form/new")
+                        }
+                    },
+                    containerColor = BlueLight,
+                    contentColor = BlueNavy,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = if (khataSelectedTab == 0) stringResource(R.string.str_add_customer) else stringResource(R.string.str_add_supplier),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            BottomNavigationBar(currentTab = currentTab, onTabSelected = { currentTab = it })
+        }
+    ) { innerPadding ->
+        if (currentTab == "Home") {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                HeaderSection(
+                    user = currentUser, 
+                    business = currentBusiness,
+                    onProfileClick = { showProfileSheet = true }
+                )
+                
+                SalesCard(todaysSales, todaysExpenses, todaysProfit)
+                
+                // Business Health Score
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(24.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(24.dp))
+                        .padding(20.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.str_vyaparsetu_business_health_sco), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BlueNavy)
+                        Text(healthCategory, color = healthColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { healthScore / 100f },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                        color = healthColor,
+                        trackColor = BlueLight
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("$healthScore/100", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BlueNavy)
+                        Text(healthReason, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f).padding(start = 16.dp), textAlign = TextAlign.End)
+                    }
+                }
+                
+                StatsGrid(inventoryValue, totalOutstanding)
+                
+                // VyaparSetu AI Insights Section
+                var aiInsights by remember { mutableStateOf<List<String>?>(null) }
+                var isGeneratingInsights by remember { mutableStateOf(false) }
+                val coroutineScope = rememberCoroutineScope()
+                val noDataMsg = stringResource(R.string.str_not_enough_data)
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(BlueLight.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                        .border(1.dp, BlueAccent.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                        .padding(20.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.str_vyaparsetu_ai_1), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BlueNavy)
+                        if (aiInsights == null && !isGeneratingInsights) {
+                            TextButton(onClick = {
+                                isGeneratingInsights = true
+                                coroutineScope.launch {
+                                    val result = com.example.data.repository.AiService.generateBusinessInsights()
+                                    isGeneratingInsights = false
+                                    val msg = noDataMsg
+aiInsights = result.getOrNull() ?: listOf(msg)
+                                }
+                            }) {
+                                Text(stringResource(R.string.str_generate_insights), fontSize = 12.sp, color = BlueAccent)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    if (isGeneratingInsights) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = BlueAccent, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.str_analyzing_your_business), fontSize = 12.sp, color = TextSecondary)
+                        }
+                    } else if (aiInsights != null) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            aiInsights?.forEach { insight ->
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Text(stringResource(R.string.str_empty_1), color = BlueAccent, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 8.dp))
+                                    Text(insight, fontSize = 13.sp, color = TextPrimary)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(stringResource(R.string.str_get_smart_insights_based_on_yo), fontSize = 12.sp, color = TextSecondary)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    VyaparButton(
+                        text = stringResource(R.string.str_ask_vyaparsetu),
+                        onClick = { onNavigateToSubRoute("ai_assistant") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                
+                // Real DB Stats
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCardSimple(stringResource(R.string.str_products), myProducts.size.toString(), Modifier.weight(1f)) { currentTab = "Inventory" }
+                    StatCardSimple(stringResource(R.string.str_customers), myCustomers.size.toString(), Modifier.weight(1f)) { khataSelectedTab = 0; currentTab = "Khata" }
+                    StatCardSimple(stringResource(R.string.str_suppliers), mySuppliers.size.toString(), Modifier.weight(1f)) { khataSelectedTab = 1; currentTab = "Khata" }
+                }
+                
+                if (lowStockCount > 0) {
+                    EmptyStateCard(stringResource(R.string.str_inventory_alert), stringResource(R.string.str_products_low_stock, lowStockCount))
+                } else if (myProducts.isEmpty()) {
+                    EmptyStateCard("Inventory", stringResource(R.string.str_add_first_product))
+                }
+                

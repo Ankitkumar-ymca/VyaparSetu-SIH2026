@@ -1,0 +1,37 @@
+--- app/src/main/java/com/example/data/repository/AiService.kt
++++ app/src/main/java/com/example/data/repository/AiService.kt
+@@ -156,2 +156,2 @@
+                 You are VyaparSetu Voice AI. Parse the user's spoken command (which may be in Hinglish or Hindi) into a structured action.
+-                Return a JSON object with this schema:
++                Return ONLY a JSON object with this exact schema:
+                 {
+-                  "type": "CREATE_SALE" | "RECORD_PAYMENT" | "ADD_PRODUCT" | "UNKNOWN",
+-                  "entityName": "String (e.g., customer name, product name)",
++                  "type": "CREATE_CUSTOMER" | "CREATE_SUPPLIER" | "CREATE_SALE" | "CREATE_PURCHASE" | "CREATE_EXPENSE" | "RECORD_PAYMENT" | "NAVIGATE_REPORTS" | "NAVIGATE_CUSTOMERS" | "NAVIGATE_SUPPLIERS" | "UNKNOWN",
++                  "entityName": "String (e.g., customer name, supplier name, product name)",
+                   "amount": Double (if applicable, else null),
+                   "quantity": Int (if applicable, else null),
+-                  "summary": "String (a short human-readable summary of what you are proposing to do, e.g. 'Record a sale of 5 Lays for Ramesh')"
++                  "summary": "String (a short human-readable summary of what you are proposing to do, e.g. 'Record a sale of ₹500 for Ramesh' or 'Add supplier ABC Traders')"
+                 }
+                 
+-                Examples:
+-                "Ramesh ko 500 rupay ka saman becha" -> { type: "CREATE_SALE", entityName: "Ramesh", amount: 500, summary: "Record a sale of ₹500 for Ramesh" }
+-                "Suresh ne 1000 rupay diye" -> { type: "RECORD_PAYMENT", entityName: "Suresh", amount: 1000, summary: "Record payment of ₹1000 from Suresh" }
+-                "Naya item add karo Parle G bees rupay ka" -> { type: "ADD_PRODUCT", entityName: "Parle G", amount: 20, summary: "Add new product 'Parle G' priced at ₹20" }
++                IMPORTANT RULES:
++                - "Add customer Rahul" -> type: "CREATE_CUSTOMER", entityName: "Rahul", summary: "Add Rahul as a customer"
++                - "Add supplier ABC Traders" -> type: "CREATE_SUPPLIER", entityName: "ABC Traders", summary: "Add ABC Traders as a supplier"
++                - "Open reports" -> type: "NAVIGATE_REPORTS", summary: "Open the reports dashboard"
++                - "Show customers" -> type: "NAVIGATE_CUSTOMERS", summary: "Open the customers list"
++                - "Show suppliers" -> type: "NAVIGATE_SUPPLIERS", summary: "Open the suppliers list"
++                - "Add an expense of 500 for chai" -> type: "CREATE_EXPENSE", amount: 500, summary: "Add an expense of ₹500 for chai"
++                - DO NOT confuse Customer and Supplier. If the user says 'Supplier', it MUST be CREATE_SUPPLIER.
+             """.trimIndent()
+@@ -174,3 +174,4 @@
+                 val action = com.example.domain.model.ProposedAction(
+                     actionType = type,
+-                    customerName = if (type == "RECORD_PAYMENT" || type == "CREATE_SALE") entityName else null,
++                    customerName = if (type == "CREATE_CUSTOMER" || type == "RECORD_PAYMENT" || type == "CREATE_SALE") entityName else null,
++                    supplierName = if (type == "CREATE_SUPPLIER" || type == "CREATE_PURCHASE") entityName else null,
+                     productName = if (type == "ADD_PRODUCT") entityName else null,

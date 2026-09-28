@@ -1,0 +1,1 @@
+sed -i 's/val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }/val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = false; explicitNulls = false }/g' app/src/main/java/com/example/data/remote/GeminiApiService.kt
